@@ -13,6 +13,9 @@
 #define PARENT_FOLDER ".."
 #define SELF_FOLDER "."
 
+#define ERROR_FILE_NOT_FOUND "FILE NOT FOUND (neni zdroj)\n"
+#define ERROR_PATH_NOT_FOUND "PATH NOT FOUND (neexistuje cilová cesta)\n"
+
 const int32_t ROOT_ID = 1;
 const int32_t ID_ITEM_FREE = 0;
 int32_t ID_NEXT = 2; // id to assign to next created inode
@@ -110,7 +113,7 @@ void *make_dir_file(superblock *fs, int parentid, int selfid){
 }
 
 
-struct inode *get_inode(superblock *fs, int id){
+struct inode *get_inode_by_id(superblock *fs, int id){
     struct inode *addr = fs->inode_start_address;
     void *end_addr = fs->data_start_address;
 
@@ -133,7 +136,7 @@ struct inode *get_inode(superblock *fs, int id){
  * @return free inode or NULL if all are taken
  */
 struct inode *get_free_inode(superblock *fs){
-    return get_inode(fs, ID_ITEM_FREE);
+    return get_inode_by_id(fs, ID_ITEM_FREE);
 }
 
 /**
@@ -158,14 +161,14 @@ int find_in_dir(struct inode *dir, char *item){
 }
 
 /**
- * Gets index of inode corresponding to last directory in path
- * !! zatim jen direct1
+ * Gets index of inode corresponding to last item in path
+ * !! zatim jen direct1 v directory
  * @param path path to dir starting with / (root)
  * @param fs
  * @return
  */
-struct inode *get_dir_inode(superblock *fs, char *path){
-    struct inode *cur_dir = get_inode(fs, ROOT_ID);
+struct inode *get_inode_by_path(superblock *fs, char *path){
+    struct inode *cur_dir = get_inode_by_id(fs, ROOT_ID);
     char *searched = calloc(1, sizeof(char) * strlen(path));
     strcpy(searched, path);
 
@@ -183,13 +186,13 @@ struct inode *get_dir_inode(superblock *fs, char *path){
 
         rest = strchr(searched, '/');
         if(rest == NULL){
-            return get_inode(fs, find_in_dir(cur_dir, searched));
+            return get_inode_by_id(fs, find_in_dir(cur_dir, searched));
         }
 
         *rest = '\0'; // delete /
         rest++;
 
-        cur_dir = get_inode(fs, find_in_dir(cur_dir, searched));
+        cur_dir = get_inode_by_id(fs, find_in_dir(cur_dir, searched));
         if(cur_dir == NULL){
             printf("PATH NOT FOUND: %s", searched);
             return NULL;
@@ -216,7 +219,7 @@ int mkdir(superblock *fs, char *path){
     dir_name++;
 
     printf("parent\t%s\nfolder\t%s\n", parent_path, dir_name);
-    struct inode *parent_inode = get_dir_inode(fs, parent_path);
+    struct inode *parent_inode = get_inode_by_path(fs, parent_path);
     printf("found\t%d\n", parent_inode->nodeid);
 
     struct inode *inode = get_free_inode(fs);
@@ -226,6 +229,135 @@ int mkdir(superblock *fs, char *path){
     inode->file_size = 2 * sizeof(struct directory_item);
 
     add_file_to_dir(parent_inode, dir_name, inode->nodeid);
+    return 0;
+}
+
+/**
+ * Copies file to free space on disk
+ * !!! JEN DIRECT1
+ * @param fs
+ * @param file file to be copied
+ * @return inode corresponding to the file, NULL if not enough spacce on disk
+ */
+struct inode *copy_file_to_free_block(superblock *fs, FILE *file){
+    struct inode *inode = get_free_inode(fs);
+    int block_id = get_free_block(fs);
+    char *block = fs->data_start_address + block_id;
+    printf("\t block1: %p\n", block);
+    inode->direct1 = block;
+    int max_block_size = fs->cluster_size;
+    long read_bytes = 0;
+    int read;
+
+    for(;;){
+        read = fgetc(file);
+        if(read == EOF){
+            break;
+        }
+        *block = read;
+        block++;
+        read_bytes++;
+    }
+
+    inode->file_size = read_bytes;
+    printf("copied %ld bytes", read_bytes);
+    return inode;
+}
+
+/**
+ * Copies file from src to dest directory
+ * @param src source file to be copied. Cannot be direcotry
+ * @param dest destination in FS. if ends with /, src will be copied into that folder.
+ *      If the dest doesn't end with /, src will be copied with different name.
+ * @return 0 if successfull, -1 if error.
+ */
+int incp(superblock *fs, char *src, char *dest){
+    // open file
+    FILE *source_file = fopen(src, "r");
+    if (source_file == NULL){
+        printf("File %s not found!\n", src);
+        return -1;
+    }
+    // get filename
+    char *filename = strrchr(src, '/') + 1; // go to last /
+    if(filename == NULL){
+        filename = src;
+    }
+
+    // copy to dir
+    if(dest[strlen(dest) -1] == '/'){
+        char *dest_cpy = (char *) calloc(1, sizeof(char) * strlen(dest));
+        strncpy(dest_cpy, dest, (strlen(dest) - 1)); // remove the /
+
+        printf("Puvodni cesta:\t%s\nNova cesta:\t%s\n", dest, dest_cpy);
+        struct inode *dest_inode = get_inode_by_path(fs, dest_cpy);
+        if (dest_inode == NULL){
+            printf("Destination %s not found!\n", dest_cpy);
+            return -1;
+        }
+        printf("Directory found:\t%d\n", dest_inode->nodeid);
+        // save file
+        struct inode *file_inode = copy_file_to_free_block(fs, source_file);
+        if(file_inode == NULL){
+            printf("Not enought space on the disk!\n");
+            return -1;
+        }
+        add_file_to_dir(dest_inode, filename, file_inode->nodeid);
+        free(dest_cpy);
+    } else { // copy and rename
+        printf("NOT IMPLEMENTED!\n");
+    }
+    return 0;
+}
+
+/**
+ * Copies file src from disk to dest directory. Note this function rewrites any existing file.
+ * @param fs
+ * @param src source file located inside FS
+ * @param dest destination outside FS. If ends with /, src will be copied to this directory without changing name,
+ *      otherwise provided name (and suffix) will be used.
+ * @return 0 if successfull, -1 if error
+ */
+int outcp(superblock *fs, char *src, char *dest){
+    struct inode *src_inode = get_inode_by_path(fs, src);
+    if(src_inode == NULL){
+        printf(ERROR_FILE_NOT_FOUND);
+    }
+    long to_read = src_inode->file_size;
+    char *filename;
+    //is it file or folder?
+    if(dest[strlen(dest)-1] == '/'){
+        // if folder, use the filename from src and rest from dest
+        filename = calloc(1, strlen(dest)+strlen(strrchr(src, '/'))+1);
+        if(filename == NULL){
+            return -1;
+        }
+        strcpy(filename, dest);
+        strcat(filename, strrchr(src, '/'));
+    }else{
+        filename = dest;
+    }
+    FILE *dest_file = fopen(filename, "w");
+    if(filename != dest){
+        free(filename);
+    }
+    if(dest_file == NULL){
+        printf(ERROR_PATH_NOT_FOUND);
+        return -1;
+    }
+
+    char *data = (char *) src_inode->direct1;
+    char *buffer = (char *)calloc(1, fs->cluster_size + 1);
+    strncpy(buffer, data, fs->cluster_size);
+    printf("to be copied:\t%s\t(%ld)\n", data, to_read);
+    fputs(buffer, dest_file);
+
+    to_read -= fs->cluster_size;
+    if(to_read > 0){
+        printf("Oops - the file is over one data block");
+    }
+
+    fclose(dest_file);
     return 0;
 }
 
@@ -272,18 +404,21 @@ int main(int argc, const char* argv[]) {
     root_inode->file_size =  2 * sizeof(struct directory_item);
 
     mkdir(fs, "/dev");
-    struct inode *dir_inode = get_dir_inode(fs, "/dev");
-    int test = dir_inode->nodeid;
-    printf("nalezeno:\t%d\n", test);
-
     mkdir(fs, "/dev/etc");
-    dir_inode = get_dir_inode(fs, "/dev/etc");
-    test = dir_inode->nodeid;
-    printf("nalezeno:\t%d\n", test);
+    incp(fs, "/home/martin/seme.txt", "/dev/");
+    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
-    dir_inode = get_dir_inode(fs, "");
-    test = dir_inode->nodeid;
-    printf("nalezeno:\t%d\n", test);
+//    struct inode *dir_inode = get_dir_inode(fs, "/dev");
+//    int test = dir_inode->nodeid;
+//    printf("nalezeno:\t%d\n", test);
+//
+//    dir_inode = get_dir_inode(fs, "/dev/etc");
+//    test = dir_inode->nodeid;
+//    printf("nalezeno:\t%d\n", test);
+//
+//    dir_inode = get_dir_inode(fs, "");
+//    test = dir_inode->nodeid;
+//    printf("nalezeno:\t%d\n", test);
 
     return 0;
 }

@@ -13,11 +13,6 @@ struct inode {
     int32_t file_size;              //velikost souboru v bytech
     void *direct[5];
     void *indirect[2];
-    int64_t direct1;                // 1. přímý odkaz na datové bloky
-    int64_t direct2;                // 2. přímý odkaz na datové bloky
-    int64_t direct3;                // 3. přímý odkaz na datové bloky
-    int64_t direct4;                // 4. přímý odkaz na datové bloky
-    int64_t direct5;                // 5. přímý odkaz na datové bloky
     int64_t indirect1;              // 1. nepřímý odkaz (odkaz - datové bloky)
     int64_t indirect2;              // 2. nepřímý odkaz (odkaz - odkaz - datové bloky)
 };
@@ -44,7 +39,7 @@ struct directory_item {
  */
 int get_free_block(superblock *fs);
 
-int add_file_to_dir(struct inode *folder_inode, char *name, int itemid);
+int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int itemid);
 
 /**
  * Adds a file representing folder on next free datablock
@@ -53,17 +48,8 @@ int add_file_to_dir(struct inode *folder_inode, char *name, int itemid);
  * @param selfid id of self folder inode
  * @return address of created directory or NULL if no disk is full
  */
-void *make_dir_file(superblock *fs, int parentid, int selfid);
+int make_dir_file(superblock *fs, char *buffer, int parentid, int selfid);
 
-/**
- * Reads and copies file associated with inode up to buffersize bytes to buffer.
- * @param fs
- * @param inode inode associated with the file
- * @param buffer where should the file be saved to
- * @param buffersize size of buffer. Note that this function does not append \0 at the end.
- * @return bytes read - upper limit is the actual filesize. -1 if there is an error
- */
-long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte, long endbyte);
 
 struct inode *get_inode_by_id(superblock *fs, int id);
 
@@ -81,7 +67,7 @@ struct inode *get_free_inode(superblock *fs);
  * @param item item name, must be exact match
  * @return id of associated inode or -1 if not found
  */
-int find_in_dir(struct inode *dir, char *item);
+int find_in_dir(superblock *fs, struct inode *dir, char *item);
 
 /**
  * Gets index of inode corresponding to last item in path
@@ -128,6 +114,25 @@ int incp(superblock *fs, char *src, char *dest);
  */
 int outcp(superblock *fs, char *src, char *dest);
 
+/**
+ * Displays all the files inside direcotry specified by path.
+ * Formatted as +DIRECTORY   -FILE
+ * @param fs
+ * @param path directory to list
+ */
 void ls(superblock *fs, char *path);
+
+/**
+ * Reads and copies file associated with inode to buffer.
+ * @param fs
+ * @param inode inode associated with the file
+ * @param buffer where should the file be saved to
+ * @param startbyte specifies offset from start of file - i.e. skips this number of bytes
+ * @param bytes how many bytes should be read into the buffer. Note there is no appended \0 at the end.
+ * @return bytes read - upper limit is the actual filesize. -1 if there is an error
+ */
+long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte, long bytes);
+
+long save_file(superblock *fs, struct inode *inode, char *file, long filesize);
 
 #endif //INODE_INODE_H

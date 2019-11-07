@@ -44,13 +44,39 @@ int main(int argc, const char* argv[]) {
     struct inode *root_inode = get_free_inode(fs);
     root_inode->isDirectory = true;
     root_inode->nodeid = 1;
-    root_inode->direct1 = (int64_t) make_dir_file(fs, 1, 1);
+    char *buffer = malloc(2 * sizeof(struct directory_item));
+    make_dir_file(fs, buffer, 1, 1);
+    save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
     root_inode->file_size =  2 * sizeof(struct directory_item);
 
+    printf("MKDIR 0 -----: \n");
+    for(int i = 0; i < root_inode->file_size; i++){
+//        printf(".");
+        printf("%c", ((char *)root_inode->direct[0])[i]);
+    }
+    printf("\n");
     mkdir(fs, "/dev");
+    printf("MKDIR 1 -----: \n");
+    for(int i = 0; i < root_inode->file_size; i++){
+//        printf(".");
+        printf("%c", ((char *)root_inode->direct[0])[i]);
+    }
+    printf("\n");
     mkdir(fs, "/dev/etc");
-    incp(fs, "/home/martin/seme.txt", "/dev/");
+    printf("MKDIR 2 -----: \n");
+    for(int i = 0; i < root_inode->file_size; i++){
+//        printf(".");
+        printf("%c", ((char *)root_inode->direct[0])[i]);
+    }
+    printf("\n");
     ls(fs, "/dev");
+    printf("LS -----: \n");
+    for(int i = 0; i < root_inode->file_size; i++){
+//        printf(".");
+        printf("%c", ((char *)root_inode->direct[0])[i]);
+    }
+    printf("\n");
+//    incp(fs, "/home/martin/seme.txt", "/dev/");
 //    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
 //    struct inode *dir_inode = get_dir_inode(fs, "/dev");
@@ -64,6 +90,6 @@ int main(int argc, const char* argv[]) {
 //    dir_inode = get_dir_inode(fs, "");
 //    test = dir_inode->nodeid;
 //    printf("nalezeno:\t%d\n", test);
-
+    free(buffer);
     return 0;
 }

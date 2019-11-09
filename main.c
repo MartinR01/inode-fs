@@ -8,15 +8,13 @@
 
 int main(int argc, const char* argv[]) {
     if(argc != 2){
-        printf("Invalid number of arguments!\nUsage: inode <FS name>");
+        printf("Invalid number of arguments!\nUsage: inode <FS name>\n");
         exit(1);
     }
 
     FILE *file = fopen(argv[1], "r+");
     if (file == NULL){
-        printf("File %s not found... Creating a new FS...", argv[1]);
-    printf("ahoj");
-
+        printf("File %s not found... Creating a new FS...\n", argv[1]);
     } else {
         printf("Loading data from FS %s...\n", argv[1]);
     }
@@ -32,7 +30,6 @@ int main(int argc, const char* argv[]) {
     fs->cluster_size = cluster_size;
     fs->cluster_count = n_datablocks;
     fs->bitmap_start_address = ((char *) fs) + sizeof(superblock);
-    printf("size %d\n\n%d\n\n", sizeof(superblock), sizeof(struct inode));
     fs->inode_start_address = ((char *) fs->bitmap_start_address) + fs->cluster_count;
     fs->data_start_address = ((char *) fs->inode_start_address) + sizeof(struct inode) * fs->cluster_count;
 
@@ -49,47 +46,13 @@ int main(int argc, const char* argv[]) {
     save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
     root_inode->file_size =  2 * sizeof(struct directory_item);
 
-    printf("MKDIR 0 -----: \n");
-    for(int i = 0; i < root_inode->file_size; i++){
-//        printf(".");
-        printf("%c", ((char *)root_inode->direct[0])[i]);
-    }
-    printf("\n");
     mkdir(fs, "/dev");
-    printf("MKDIR 1 -----: \n");
-    for(int i = 0; i < root_inode->file_size; i++){
-//        printf(".");
-        printf("%c", ((char *)root_inode->direct[0])[i]);
-    }
-    printf("\n");
     mkdir(fs, "/dev/etc");
-    printf("MKDIR 2 -----: \n");
-    for(int i = 0; i < root_inode->file_size; i++){
-//        printf(".");
-        printf("%c", ((char *)root_inode->direct[0])[i]);
-    }
-    printf("\n");
     ls(fs, "/dev");
-    printf("LS -----: \n");
-    for(int i = 0; i < root_inode->file_size; i++){
-//        printf(".");
-        printf("%c", ((char *)root_inode->direct[0])[i]);
-    }
-    printf("\n");
-//    incp(fs, "/home/martin/seme.txt", "/dev/");
-//    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
+    incp(fs, "/home/martin/seme.txt", "/dev/");
+    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
-//    struct inode *dir_inode = get_dir_inode(fs, "/dev");
-//    int test = dir_inode->nodeid;
-//    printf("nalezeno:\t%d\n", test);
-//
-//    dir_inode = get_dir_inode(fs, "/dev/etc");
-//    test = dir_inode->nodeid;
-//    printf("nalezeno:\t%d\n", test);
-//
-//    dir_inode = get_dir_inode(fs, "");
-//    test = dir_inode->nodeid;
-//    printf("nalezeno:\t%d\n", test);
+
     free(buffer);
     return 0;
 }

@@ -39,18 +39,32 @@ struct directory_item {
  */
 int get_free_block(superblock *fs);
 
+/**
+ * Appends link to inode at the end of folder file
+ * @param fs
+ * @param folder_inode folder to append new file to
+ * @param name name of the new file
+ * @param itemid id of the inode associated with the new file
+ * @return 0 if successfull
+ */
 int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int itemid);
 
 /**
- * Adds a file representing folder on next free datablock
+ * Creates file representing new directory (containing onlz . and ..) in the buffer
  * @param fs
- * @param parentid id of parent folder inode
- * @param selfid id of self folder inode
- * @return address of created directory or NULL if no disk is full
+ * @param buffer buffer to create new directory to (make sure it is at least 2 * sizeof(struct directory_item))
+ * @param parentid id of parent's inode
+ * @param selfid id of inode for this folder
+ * @return 0 if successfull
  */
 int make_dir_file(superblock *fs, char *buffer, int parentid, int selfid);
 
-
+/**
+ * Returns inode with given id
+ * @param fs
+ * @param id id of the inode
+ * @return inode with the id, NULL if not found
+ */
 struct inode *get_inode_by_id(superblock *fs, int id);
 
 /**
@@ -70,11 +84,10 @@ struct inode *get_free_inode(superblock *fs);
 int find_in_dir(superblock *fs, struct inode *dir, char *item);
 
 /**
- * Gets index of inode corresponding to last item in path
- * !! zatim jen direct1 v directory
- * @param path path to dir starting with / (root)
+ * Gets inode corresponding to last item in path
+ * @param path absolute path
  * @param fs
- * @return
+ * @return inode of the last item on the path or NULL if any part of the path is invalid
  */
 struct inode *get_inode_by_path(superblock *fs, char *path);
 
@@ -88,7 +101,6 @@ int mkdir(superblock *fs, char *path);
 
 /**
  * Copies file to free space on disk
- * !!! JEN DIRECT1
  * @param fs
  * @param file file to be copied
  * @return inode corresponding to the file, NULL if not enough spacce on disk
@@ -129,10 +141,20 @@ void ls(superblock *fs, char *path);
  * @param buffer where should the file be saved to
  * @param startbyte specifies offset from start of file - i.e. skips this number of bytes
  * @param bytes how many bytes should be read into the buffer. Note there is no appended \0 at the end.
- * @return bytes read - upper limit is the actual filesize. -1 if there is an error
+ * @return 0 if successfull
  */
 long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte, long bytes);
 
+/**
+ * Saves buffer to datablocks associated with given inode.
+ * Necessary new datablocks are taken automatically.
+ * Filesize in inode is updated.
+ * @param fs
+ * @param inode inode of the file
+ * @param file buffer with current version to be saved
+ * @param filesize size of the buffer
+ * @return 0 if successfull
+ */
 long save_file(superblock *fs, struct inode *inode, char *file, long filesize);
 
 #endif //INODE_INODE_H

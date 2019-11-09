@@ -37,7 +37,7 @@ struct directory_item {
  * Gets next free byte inside bitmap and sets it as used
  * @return offset from bitmap or -1 if completely full
  */
-int get_free_block(superblock *fs);
+int obtain_free_block(superblock *fs);
 
 /**
  * Appends link to inode at the end of folder file
@@ -100,12 +100,14 @@ struct inode *get_inode_by_path(superblock *fs, char *path);
 int mkdir(superblock *fs, char *path);
 
 /**
- * Copies file to free space on disk
+ * Copies file to buffer
  * @param fs
  * @param file file to be copied
- * @return inode corresponding to the file, NULL if not enough spacce on disk
+ * @param buffer buffer to load file to
+ * @param size size of the buffer. This ensures it is not exceeded in case of inadequate space
+ * @return 0 if successfull, -1 if the allocated space was not sufficient.
  */
-struct inode *copy_file_to_free_block(superblock *fs, FILE *file);
+int copy_file_to_buffer(superblock *fs, FILE *file, char *buffer, long size);
 
 /**
  * Copies file from src to dest directory

@@ -48,8 +48,8 @@ int main(int argc, const char* argv[]) {
 
     mkdir(fs, "/dev");
     mkdir(fs, "/dev/etc");
-    ls(fs, "/dev");
     incp(fs, "/home/martin/seme.txt", "/dev/");
+    ls(fs, "/dev");
     outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
 

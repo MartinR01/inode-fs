@@ -42,7 +42,7 @@ int main(int argc, const char* argv[]) {
     root_inode->isDirectory = true;
     root_inode->nodeid = 1;
     char *buffer = malloc(2 * sizeof(struct directory_item));
-    make_dir_file(fs, buffer, 1, 1);
+    make_dir_file(buffer, 1, 1);
     save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
     root_inode->file_size =  2 * sizeof(struct directory_item);
 

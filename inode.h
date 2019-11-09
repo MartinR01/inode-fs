@@ -37,7 +37,7 @@ struct directory_item {
  * Gets next free byte inside bitmap and sets it as used
  * @return offset from bitmap or -1 if completely full
  */
-int obtain_free_block(superblock *fs);
+u_long obtain_free_block(superblock *fs);
 
 /**
  * Appends link to inode at the end of folder file
@@ -51,13 +51,12 @@ int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int 
 
 /**
  * Creates file representing new directory (containing onlz . and ..) in the buffer
- * @param fs
  * @param buffer buffer to create new directory to (make sure it is at least 2 * sizeof(struct directory_item))
  * @param parentid id of parent's inode
  * @param selfid id of inode for this folder
  * @return 0 if successfull
  */
-int make_dir_file(superblock *fs, char *buffer, int parentid, int selfid);
+int make_dir_file(char *buffer, int parentid, int selfid);
 
 /**
  * Returns inode with given id
@@ -101,13 +100,12 @@ int mkdir(superblock *fs, char *path);
 
 /**
  * Copies file to buffer
- * @param fs
  * @param file file to be copied
  * @param buffer buffer to load file to
  * @param size size of the buffer. This ensures it is not exceeded in case of inadequate space
  * @return 0 if successfull, -1 if the allocated space was not sufficient.
  */
-int copy_file_to_buffer(superblock *fs, FILE *file, char *buffer, long size);
+int copy_file_to_buffer(FILE *file, char *buffer, long size);
 
 /**
  * Copies file from src to dest directory
@@ -157,6 +155,6 @@ long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte
  * @param filesize size of the buffer
  * @return 0 if successfull
  */
-long save_file(superblock *fs, struct inode *inode, char *file, long filesize);
+long save_file(superblock *fs, struct inode *inode, char *file, u_long filesize);
 
 #endif //INODE_INODE_H

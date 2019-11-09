@@ -15,9 +15,9 @@ const int32_t ROOT_ID = 1;
 const int32_t ID_ITEM_FREE = 0;
 int32_t ID_NEXT = 2; // id to assign to next created inode
 
-int obtain_free_block(superblock *fs){
+u_long obtain_free_block(superblock *fs){
     char *bitmap = fs->bitmap_start_address;
-    void *end_addr = fs->inode_start_address;
+    char *end_addr = (char *) fs->inode_start_address;
     char *original_addr = bitmap;
 
     while(bitmap < end_addr){
@@ -40,7 +40,7 @@ int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int 
     load_file(fs, folder_inode, buffer, 0, folder_inode->file_size);
 
     struct directory_item *folder = (struct directory_item *) buffer;
-    long index = folder_inode->file_size / sizeof(struct directory_item);
+    u_long index = folder_inode->file_size / sizeof(struct directory_item);
 
     folder[index].inode = itemid;
     strncpy(folder[index].item_name, name, 12);
@@ -49,7 +49,7 @@ int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int 
     return 0;
 }
 
-int make_dir_file(superblock *fs, char *buffer, int parentid, int selfid){
+int make_dir_file(char *buffer, int parentid, int selfid){
     struct directory_item *block = (struct directory_item *) buffer;
 
     block[0].inode = selfid;
@@ -64,7 +64,7 @@ int make_dir_file(superblock *fs, char *buffer, int parentid, int selfid){
 
 struct inode *get_inode_by_id(superblock *fs, int id){
     struct inode *addr = fs->inode_start_address;
-    void *end_addr = fs->data_start_address;
+    struct inode *end_addr = (struct inode *) fs->data_start_address;
 
     for(int i = 0; addr + i < end_addr; i++){
         if (addr[i].nodeid == id){
@@ -85,9 +85,9 @@ struct inode *get_free_inode(superblock *fs){
 int find_in_dir(superblock *fs, struct inode *dir, char *item){
     struct directory_item *items = calloc(1, dir->file_size);
     load_file(fs, dir, (char *) items, 0, dir->file_size);
-    int n_items = dir->file_size / sizeof(struct directory_item);
+    u_long n_items = dir->file_size / sizeof(struct directory_item);
 
-    for(int i = 0; i < n_items; i++){
+    for(u_long i = 0; i < n_items; i++){
         int diff = strcmp(items[i].item_name, item);
         if(diff == 0){
             free(items);
@@ -150,7 +150,7 @@ int mkdir(superblock *fs, char *path){
     char *buffer = calloc(1, 2 * sizeof(struct directory_item));
 
     // create the directory file and save it to disk
-    make_dir_file(fs, buffer, parent_inode->nodeid, inode->nodeid);
+    make_dir_file(buffer, parent_inode->nodeid, inode->nodeid);
     save_file(fs, inode, buffer, 2 * sizeof(struct directory_item));
     inode->isDirectory = true;
 
@@ -160,7 +160,7 @@ int mkdir(superblock *fs, char *path){
     return 0;
 }
 
-int copy_file_to_buffer(superblock *fs, FILE *file, char *buffer, long size){
+int copy_file_to_buffer(FILE *file, char *buffer, long size){
     long read_bytes = 0;
     int read;
     do{
@@ -168,7 +168,7 @@ int copy_file_to_buffer(superblock *fs, FILE *file, char *buffer, long size){
         if(read == EOF){
             return 0;
         }
-        *buffer = read;
+        *buffer = (char) read;
         buffer++;
         read_bytes++;
     }while (read_bytes <= size);
@@ -210,7 +210,7 @@ int incp(superblock *fs, char *src, char *dest){
             printf("Not enought space on the disk!\n");
             return -1;
         }
-        copy_file_to_buffer(fs, source_file, buffer, size);
+        copy_file_to_buffer(source_file, buffer, size);
         save_file(fs, file_inode, buffer, size);
 
         add_file_to_dir(fs, dest_inode, filename, file_inode->nodeid);
@@ -262,13 +262,12 @@ void ls(superblock *fs, char *path){
     // read dir file
     char *buffer = calloc(1, folder->file_size);
     load_file(fs, folder, buffer, 0, folder->file_size);
-    long n_items = folder->file_size / sizeof(struct directory_item);
-
+    u_long n_items = folder->file_size / sizeof(struct directory_item);
 
     struct directory_item *content = (struct directory_item *) buffer;
 
 
-    for(long i = 0; i < n_items; i++){
+    for(u_long i = 0; i < n_items; i++){
         struct inode *item_inode = get_inode_by_id(fs, content[i].inode);
         char dir_or_file = item_inode->isDirectory ? '+' : '-';
         printf("%c%s\n", dir_or_file, content[i].item_name);
@@ -294,7 +293,7 @@ long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte
     return 0;
 }
 
-long save_file(superblock *fs, struct inode *inode, char *file, long filesize) {
+long save_file(superblock *fs, struct inode *inode, char *file, u_long filesize) {
     int dir_link = 0;
     void *cur_addr;
     long rem_bytes = filesize;
@@ -303,7 +302,7 @@ long save_file(superblock *fs, struct inode *inode, char *file, long filesize) {
     while (rem_bytes > 0 && dir_link <= 5){
         cur_addr = inode->direct[dir_link];
         if(cur_addr == NULL){
-            int index = obtain_free_block(fs);
+            u_long index = obtain_free_block(fs);
             inode->direct[dir_link] = fs->data_start_address + (fs->cluster_size * index);
             cur_addr = inode->direct[dir_link];
         }

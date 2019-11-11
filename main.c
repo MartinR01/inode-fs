@@ -29,6 +29,8 @@ void process_cmd(char *cmd, superblock *fs){
         char *arg1 = NEXT_ARG;
         char *arg2 = NEXT_ARG;
         outcp(fs, arg1, arg2);
+    } else if (EQUAL_S(cmd, "cd")){
+        cd(fs, NEXT_ARG);
     }
 }
 

@@ -32,7 +32,13 @@ struct directory_item {
     int32_t inode;                   // inode odpovídající souboru
     char item_name[12];              //8+3 + /0 C/C++ ukoncovaci string znak
 };
-
+/**
+ * Changes current directory
+ * @param fs
+ * @param path path to new directory
+ * @return 0 if successfull, -1 if error
+ */
+int cd(superblock *fs, char *path);
 /**
  * Gets next free byte inside bitmap and sets it as used
  * @return offset from bitmap or -1 if completely full

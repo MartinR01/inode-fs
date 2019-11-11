@@ -8,12 +8,16 @@
 // jde jen o příklad, vlastní datové struktury si můžete upravit
 #define FOLDER_PARENT ".."
 #define FOLDER_SELF "."
+#define PATH_DELIM "/"
 
 #define ERROR_FILE_NOT_FOUND "FILE NOT FOUND (neni zdroj)\n"
 #define ERROR_PATH_NOT_FOUND "PATH NOT FOUND (neexistuje cilová cesta)\n"
 const int32_t ROOT_ID = 1;
 const int32_t ID_ITEM_FREE = 0;
 int32_t ID_NEXT = 2; // id to assign to next created inode
+long cur_dir = 1;
+
+
 
 u_long obtain_free_block(superblock *fs){
     char *bitmap = fs->bitmap_start_address;
@@ -88,48 +92,47 @@ int find_in_dir(superblock *fs, struct inode *dir, char *item){
     u_long n_items = dir->file_size / sizeof(struct directory_item);
 
     for(u_long i = 0; i < n_items; i++){
+//        printf("Comparing %s to %s (%d)\n", item, items[i].item_name, items[i].inode);
         int diff = strcmp(items[i].item_name, item);
         if(diff == 0){
+            int result = items[i].inode;
             free(items);
-            return items[i].inode;
+            return result;
         }
     }
     free(items);
     return -1;
 }
 
+int cd(superblock *fs, char *path){
+    struct inode *new_loc = get_inode_by_path(fs, path);
+    if(new_loc == NULL){
+        return -1;
+    }
+    cur_dir = new_loc->nodeid;
+    return 0;
+}
+
 struct inode *get_inode_by_path(superblock *fs, char *path){
-    struct inode *cur_dir = get_inode_by_id(fs, ROOT_ID);
-    char *searched = calloc(1, sizeof(char) * strlen(path));
-    strcpy(searched, path);
+    struct inode *cur_folder;
+    if (path[0] == '/'){
+        // Absolute path
+        cur_folder = get_inode_by_id(fs, ROOT_ID);
 
-    char *rest;
-
-    searched = strchr(searched, '/');
-    if(searched == NULL){  // last item on path
-        return cur_dir;
+    } else {
+        // Relative path
+        cur_folder = get_inode_by_id(fs, cur_dir);
     }
-    *searched = '\0'; // delete /
-    searched++;
-
-    while(cur_dir->isDirectory){
-        rest = strchr(searched, '/');
-        if(rest == NULL){
-            return get_inode_by_id(fs, find_in_dir(fs, cur_dir, searched));
+    struct inode *cur_item = cur_folder;
+    char *next_item = strtok(path, PATH_DELIM);
+    while(true){
+        if(next_item == NULL){
+            return cur_item;
         }
-
-        *rest = '\0'; // delete /
-        rest++;
-
-        cur_dir = get_inode_by_id(fs, find_in_dir(fs, cur_dir, searched));
-        if(cur_dir == NULL){
-            printf("PATH NOT FOUND: %s", searched);
-            return NULL;
-        }
-        searched = rest;
+        cur_folder = cur_item;
+        cur_item = get_inode_by_id(fs, find_in_dir(fs, cur_folder, next_item));
+        next_item = strtok(NULL, PATH_DELIM);
     }
-
-    return cur_dir;
 }
 
 int mkdir(superblock *fs, char *path){
@@ -138,12 +141,19 @@ int mkdir(superblock *fs, char *path){
     strcpy(parent_path, path);
 
     // divide into parent part and name of the new folder
-    char *dir_name = strrchr(parent_path, '/');
-    *dir_name = '\0';
-    dir_name++;
-
-    // get parent inode
-    struct inode *parent_inode = get_inode_by_path(fs, parent_path);
+    char *dir_name;
+    struct inode *parent_inode;
+    dir_name = strrchr(parent_path, '/');
+    if(dir_name == NULL){
+        // Make in current directory
+        dir_name = parent_path;
+        parent_inode = get_inode_by_id(fs, cur_dir);
+    } else {
+        // Make in other directory
+        *dir_name = '\0';
+        dir_name++;
+        parent_inode = get_inode_by_path(fs, parent_path);
+    }
 
     // get free inode for the direcotry and buffer for its file
     struct inode *inode = get_free_inode(fs);
@@ -258,7 +268,12 @@ int outcp(superblock *fs, char *src, char *dest){
 }
 
 void ls(superblock *fs, char *path){
-    struct inode *folder = get_inode_by_path(fs, path);
+    struct inode *folder;
+    if (path == NULL){
+        folder = get_inode_by_id(fs, cur_dir);
+    } else {
+        folder = get_inode_by_path(fs, path);
+    }
     // read dir file
     char *buffer = calloc(1, folder->file_size);
     load_file(fs, folder, buffer, 0, folder->file_size);

@@ -32,6 +32,10 @@ struct directory_item {
     int32_t inode;                   // inode odpovídající souboru
     char item_name[12];              //8+3 + /0 C/C++ ukoncovaci string znak
 };
+
+void pwd(superblock *fs);
+
+char *find_in_dir_by_id(superblock *fs, struct inode *dir, u_long item_id);
 /**
  * Changes current directory
  * @param fs
@@ -86,7 +90,7 @@ struct inode *get_free_inode(superblock *fs);
  * @param item item name, must be exact match
  * @return id of associated inode or -1 if not found
  */
-int find_in_dir(superblock *fs, struct inode *dir, char *item);
+int find_in_dir_by_name(superblock *fs, struct inode *dir, char *item);
 
 /**
  * Gets inode corresponding to last item in path

@@ -31,6 +31,8 @@ void process_cmd(char *cmd, superblock *fs){
         outcp(fs, arg1, arg2);
     } else if (EQUAL_S(cmd, "cd")){
         cd(fs, NEXT_ARG);
+    } else if (EQUAL_S(cmd, "pwd")){
+        pwd(fs);
     }
 }
 

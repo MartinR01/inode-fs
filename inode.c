@@ -9,6 +9,7 @@
 #define FOLDER_PARENT ".."
 #define FOLDER_SELF "."
 #define PATH_DELIM "/"
+#define DEFAULT_PATH_LENGTH 100
 
 #define ERROR_FILE_NOT_FOUND "FILE NOT FOUND (neni zdroj)\n"
 #define ERROR_PATH_NOT_FOUND "PATH NOT FOUND (neexistuje cilová cesta)\n"
@@ -32,6 +33,41 @@ u_long obtain_free_block(superblock *fs){
         bitmap++;
     }
     return -1;
+}
+
+void pwd(superblock *fs){
+    struct inode *dir = get_inode_by_id(fs, cur_dir);
+    struct inode *parent;
+    char *dir_name;
+    char *temp;
+    char *path = "";
+//    strcpy(path, "");
+//    printf("name of folder: %s\n", path);
+    while(dir->nodeid != ROOT_ID){
+        parent = get_inode_by_id(fs, find_in_dir_by_name(fs, dir, FOLDER_PARENT));
+        dir_name = find_in_dir_by_id(fs, parent, dir->nodeid);
+
+        if(strlen(path) > 0){
+            temp = path;
+            path = malloc(strlen(path) + strlen(dir_name) + 1);
+            strcpy(path, dir_name);
+            strcat(path, PATH_DELIM);
+            strcat(path, temp);
+        } else {
+            path = dir_name;
+        }
+
+        dir = parent;
+    }
+
+    temp = path;
+    path = malloc(strlen(path) + 1);
+    strcpy(path, PATH_DELIM);
+    strcat(path, temp);
+    printf("%s\n", path);
+
+    if(path != NULL) free(path);
+//    if(temp != NULL) free(temp);
 }
 
 
@@ -86,7 +122,7 @@ struct inode *get_free_inode(superblock *fs){
     return get_inode_by_id(fs, ID_ITEM_FREE);
 }
 
-int find_in_dir(superblock *fs, struct inode *dir, char *item){
+int find_in_dir_by_name(superblock *fs, struct inode *dir, char *item){
     struct directory_item *items = calloc(1, dir->file_size);
     load_file(fs, dir, (char *) items, 0, dir->file_size);
     u_long n_items = dir->file_size / sizeof(struct directory_item);
@@ -102,6 +138,24 @@ int find_in_dir(superblock *fs, struct inode *dir, char *item){
     }
     free(items);
     return -1;
+}
+
+char *find_in_dir_by_id(superblock *fs, struct inode *dir, u_long item_id){
+    struct directory_item *items = calloc(1, dir->file_size);
+    load_file(fs, dir, (char *) items, 0, dir->file_size);
+    u_long n_items = dir->file_size / sizeof(struct directory_item);
+
+    for(u_long i = 0; i < n_items; i++){
+//        printf("Comparing %s to %s (%d)\n", item, items[i].item_name, items[i].inode);
+        u_long diff = items[i].inode - item_id;
+        if(diff == 0){
+            char *result = items[i].item_name;
+            free(items);
+            return result;
+        }
+    }
+    free(items);
+    return NULL;
 }
 
 int cd(superblock *fs, char *path){
@@ -130,7 +184,7 @@ struct inode *get_inode_by_path(superblock *fs, char *path){
             return cur_item;
         }
         cur_folder = cur_item;
-        cur_item = get_inode_by_id(fs, find_in_dir(fs, cur_folder, next_item));
+        cur_item = get_inode_by_id(fs, find_in_dir_by_name(fs, cur_folder, next_item));
         next_item = strtok(NULL, PATH_DELIM);
     }
 }

@@ -5,6 +5,33 @@
 #include <stdbool.h>
 #include "inode.h"
 
+#define SIZE_INPUT 100
+#define ARG_DELIM " "
+
+#define NEXT_ARG strtok(NULL, ARG_DELIM)
+#define EQUAL_S(a,b) strcmp(a, b) == 0
+
+void process_cmd(char *cmd, superblock *fs){
+    // remove newline
+    cmd[strlen(cmd) - 1] = '\0';
+
+    strtok(cmd, ARG_DELIM);
+
+    if(EQUAL_S(cmd, "ls")){
+        ls(fs, NEXT_ARG);
+    } else if (EQUAL_S(cmd, "mkdir")){
+        mkdir(fs, NEXT_ARG);
+    } else if (EQUAL_S(cmd,"incp")){
+        char *arg1 = NEXT_ARG;
+        char *arg2 = NEXT_ARG;
+        incp(fs, arg1, arg2);  // C vykonava vlozene fce odzadu
+    } else if (EQUAL_S(cmd, "outcp")){
+        char *arg1 = NEXT_ARG;
+        char *arg2 = NEXT_ARG;
+        outcp(fs, arg1, arg2);
+    }
+}
+
 
 int main(int argc, const char* argv[]) {
     if(argc != 2){
@@ -46,11 +73,21 @@ int main(int argc, const char* argv[]) {
     save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
     root_inode->file_size =  2 * sizeof(struct directory_item);
 
-    mkdir(fs, "/dev");
-    mkdir(fs, "/dev/etc");
-    incp(fs, "/home/martin/seme.txt", "/dev/");
-    ls(fs, "/dev");
-    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
+    char cmd[SIZE_INPUT];
+    while(true){
+        printf("~: ");
+        fgets(cmd, SIZE_INPUT, stdin);
+//        printf("'%s'\n", cmd);
+        if(EQUAL_S(cmd, "q\n")){
+            break;
+        }
+        process_cmd(cmd, fs);
+    }
+//    mkdir(fs, "/dev");
+//    mkdir(fs, "/dev/etc");
+//    incp(fs, "/home/martin/seme.txt", "/dev/");
+//    ls(fs, "/dev");
+//    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
 
     free(buffer);

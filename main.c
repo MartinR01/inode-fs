@@ -48,6 +48,7 @@ int main(int argc, const char* argv[]) {
 
     FILE *file = fopen(argv[1], "r");
     if (file == NULL){
+//    if(1 == 1){
         printf("File %s not found... Creating a new FS...\n", argv[1]);
 
         // DEFAUTLS
@@ -61,9 +62,9 @@ int main(int argc, const char* argv[]) {
         fs->disk_size = disk_size;
         fs->cluster_size = cluster_size;
         fs->cluster_count = n_datablocks;
-        fs->bitmap_start_address = ((char *) fs) + sizeof(superblock);
-        fs->inode_start_address = ((char *) fs->bitmap_start_address) + fs->cluster_count;
-        fs->data_start_address = ((char *) fs->inode_start_address) + sizeof(struct inode) * fs->cluster_count;
+        fs->bitmap_start_address = sizeof(superblock);
+        fs->inode_start_address = fs->bitmap_start_address + fs->cluster_count;
+        fs->data_start_address = fs->inode_start_address + sizeof(struct inode) * fs->cluster_count;
 
         strcpy(fs->signature, "martin");
         strcpy(fs->volume_descriptor, "sample volume.");
@@ -93,6 +94,11 @@ int main(int argc, const char* argv[]) {
         fclose(file);
     }
 
+//    mkdir(fs, "/dev");
+//    mkdir(fs, "/dev/etc");
+//    incp(fs, "/home/martin/small.txt", "/dev/");
+//    ls(fs, "/dev");
+//    outcp(fs, "/dev/small.txt", "/home/martin/Documents/");
     char cmd[SIZE_INPUT];
     while(true){
         printf("~: ");
@@ -107,11 +113,6 @@ int main(int argc, const char* argv[]) {
         }
         process_cmd(cmd, fs);
     }
-//    mkdir(fs, "/dev");
-//    mkdir(fs, "/dev/etc");
-//    incp(fs, "/home/martin/seme.txt", "/dev/");
-//    ls(fs, "/dev");
-//    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
 
 

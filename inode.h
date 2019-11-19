@@ -11,8 +11,8 @@ struct inode {
     bool isDirectory;               //soubor, nebo adresar
     int8_t references;              //počet odkazů na i-uzel, používá se pro hardlinky
     int32_t file_size;              //velikost souboru v bytech
-    void *direct[5];
-    void *indirect[2];
+    long direct[5];                 //datablock no., 0 is unallocated... starts from 1
+    long indirect[2];
     int64_t indirect1;              // 1. nepřímý odkaz (odkaz - datové bloky)
     int64_t indirect2;              // 2. nepřímý odkaz (odkaz - odkaz - datové bloky)
 };
@@ -23,8 +23,8 @@ typedef struct {
     int32_t cluster_size;           //velikost clusteru
     int32_t cluster_count;          //pocet clusteru
     long bitmap_start_address;   //adresa pocatku bitmapy datových bloků
-    struct inode *inode_start_address;    //adresa pocatku  i-uzlů
-    char *data_start_address;     //adresa pocatku datovych bloku
+    long inode_start_address;    //adresa pocatku  i-uzlů
+    long data_start_address;     //adresa pocatku datovych bloku
 } superblock;
 
 
@@ -45,6 +45,7 @@ char *find_in_dir_by_id(superblock *fs, struct inode *dir, u_long item_id);
 int cd(superblock *fs, char *path);
 /**
  * Gets next free byte inside bitmap and sets it as used
+ * Note this starts from 0 instead of 1.
  * @return offset from bitmap or -1 if completely full
  */
 u_long obtain_free_block(superblock *fs);
@@ -149,11 +150,10 @@ void ls(superblock *fs, char *path);
  * @param fs
  * @param inode inode associated with the file
  * @param buffer where should the file be saved to
- * @param startbyte specifies offset from start of file - i.e. skips this number of bytes
  * @param bytes how many bytes should be read into the buffer. Note there is no appended \0 at the end.
  * @return 0 if successfull
  */
-long load_file(superblock *fs, struct inode *inode, char *buffer, long startbyte, long bytes);
+long load_file(superblock *fs, struct inode *inode, char *buffer, long bytes);
 
 /**
  * Saves buffer to datablocks associated with given inode.

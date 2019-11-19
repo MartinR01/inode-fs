@@ -43,39 +43,55 @@ int main(int argc, const char* argv[]) {
         exit(1);
     }
 
-    FILE *file = fopen(argv[1], "r+");
+    long disk_size;
+    superblock *fs;
+
+    FILE *file = fopen(argv[1], "r");
     if (file == NULL){
         printf("File %s not found... Creating a new FS...\n", argv[1]);
+
+        // DEFAUTLS
+        disk_size = 800 * 1024; // 800 kb
+        int cluster_size = 1024; //b
+
+        fs = (superblock *) calloc(1, disk_size);
+        int n_datablocks = (disk_size - sizeof(superblock)) / (cluster_size + sizeof(struct inode) + 1);
+
+        // init superblock
+        fs->disk_size = disk_size;
+        fs->cluster_size = cluster_size;
+        fs->cluster_count = n_datablocks;
+        fs->bitmap_start_address = ((char *) fs) + sizeof(superblock);
+        fs->inode_start_address = ((char *) fs->bitmap_start_address) + fs->cluster_count;
+        fs->data_start_address = ((char *) fs->inode_start_address) + sizeof(struct inode) * fs->cluster_count;
+
+        strcpy(fs->signature, "martin");
+        strcpy(fs->volume_descriptor, "sample volume.");
+
+        // add root folder
+        struct inode *root_inode = get_free_inode(fs);
+        root_inode->isDirectory = true;
+        root_inode->nodeid = 1;
+        char *buffer = malloc(2 * sizeof(struct directory_item));
+        make_dir_file(buffer, 1, 1);
+        save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
+        root_inode->file_size =  2 * sizeof(struct directory_item);
+
+        free(buffer);
     } else {
         printf("Loading data from FS %s...\n", argv[1]);
+
+        fseek(file, 0, SEEK_END);
+        disk_size = ftell(file);
+        rewind(file);
+
+        fs = (superblock *) calloc(1, disk_size);
+        if(fread(fs, disk_size, 1, file) != 1 ){
+            printf("Error reading file!!!!\n");
+        }
+
+        fclose(file);
     }
-    // DEFAUTLS
-    int disk_size = 800 * 1024; // 800 kb
-    int cluster_size = 1024; //b
-
-    int n_datablocks = (disk_size - sizeof(superblock)) / (cluster_size + sizeof(struct inode) + 1);
-
-    // init superblock
-    superblock *fs = (superblock *) calloc(1, disk_size);
-    fs->disk_size = disk_size;
-    fs->cluster_size = cluster_size;
-    fs->cluster_count = n_datablocks;
-    fs->bitmap_start_address = ((char *) fs) + sizeof(superblock);
-    fs->inode_start_address = ((char *) fs->bitmap_start_address) + fs->cluster_count;
-    fs->data_start_address = ((char *) fs->inode_start_address) + sizeof(struct inode) * fs->cluster_count;
-
-    strcpy(fs->signature, "martin");
-    strcpy(fs->volume_descriptor, "sample volume.");
-
-
-    // add root folder
-    struct inode *root_inode = get_free_inode(fs);
-    root_inode->isDirectory = true;
-    root_inode->nodeid = 1;
-    char *buffer = malloc(2 * sizeof(struct directory_item));
-    make_dir_file(buffer, 1, 1);
-    save_file(fs, root_inode, buffer, 2 * sizeof(struct directory_item));
-    root_inode->file_size =  2 * sizeof(struct directory_item);
 
     char cmd[SIZE_INPUT];
     while(true){
@@ -84,6 +100,10 @@ int main(int argc, const char* argv[]) {
 //        printf("'%s'\n", cmd);
         if(EQUAL_S(cmd, "q\n")){
             break;
+        } else if(EQUAL_S(cmd, "w\n")){
+            FILE *wfile = fopen(argv[1], "w");
+            fwrite(fs, disk_size, 1, wfile);
+            fclose(wfile);
         }
         process_cmd(cmd, fs);
     }
@@ -94,6 +114,7 @@ int main(int argc, const char* argv[]) {
 //    outcp(fs, "/dev/seme.txt", "/home/martin/Documents/");
 
 
-    free(buffer);
+
+    free(fs);
     return 0;
 }

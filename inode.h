@@ -22,7 +22,7 @@ typedef struct {
     int32_t disk_size;              //celkova velikost VFS
     int32_t cluster_size;           //velikost clusteru
     int32_t cluster_count;          //pocet clusteru
-    char *bitmap_start_address;   //adresa pocatku bitmapy datových bloků
+    long bitmap_start_address;   //adresa pocatku bitmapy datových bloků
     struct inode *inode_start_address;    //adresa pocatku  i-uzlů
     char *data_start_address;     //adresa pocatku datovych bloku
 } superblock;

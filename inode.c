@@ -86,6 +86,7 @@ int add_file_to_dir(superblock *fs, struct inode *folder_inode, char *name, int 
     strncpy(folder[index].item_name, name, 12);
     save_file(fs, folder_inode, (char *) buffer, folder_inode->file_size + sizeof(struct directory_item));
 
+    free(buffer);
     return 0;
 }
 
@@ -261,24 +262,26 @@ int incp(superblock *fs, char *src, char *dest){
         struct inode *dest_inode = get_inode_by_path(fs, dest_cpy);
         if (dest_inode == NULL){
             printf("Destination %s not found!\n", dest_cpy);
+            free(dest_cpy);
             return -1;
         }
+        free(dest_cpy);
         // get file size
         fseek(source_file, 0, SEEK_END);
         long size = ftell(source_file);
         rewind(source_file);
-        char *buffer = (char *)malloc(size);
         // save file
         struct inode *file_inode = get_free_inode(fs);
         if(file_inode == NULL){
             printf("Not enought space on the disk!\n");
             return -1;
         }
+        char *buffer = (char *)malloc(size);
         copy_file_to_buffer(source_file, buffer, size);
         save_file(fs, file_inode, buffer, size);
+        free(buffer);
 
         add_file_to_dir(fs, dest_inode, filename, file_inode->nodeid);
-        free(dest_cpy);
     } else { // copy and rename
         printf("NOT IMPLEMENTED!\n");
     }
